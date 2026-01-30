@@ -73,6 +73,7 @@ import (
 	"k8s.io/client-go/tools/reference"
 	utilcsr "k8s.io/client-go/util/certificate/csr"
 	"k8s.io/klog/v2"
+	"k8s.io/kubectl/pkg/color"
 	"k8s.io/kubectl/pkg/scheme"
 	"k8s.io/kubectl/pkg/util/certificate"
 	deploymentutil "k8s.io/kubectl/pkg/util/deployment"
@@ -5037,13 +5038,21 @@ func tabbedString(f func(io.Writer) error) (string, error) {
 	buf := &bytes.Buffer{}
 	out.Init(buf, 0, 8, 2, ' ', 0)
 
+	// In this function, special ANSI characters (including the coloring ones) are escaped
+	// to sanitize the output.
 	err := f(out)
 	if err != nil {
 		return "", err
 	}
 
 	out.Flush()
-	return buf.String(), nil
+
+	// Apply colors after tabwriter has formatted the output
+	// This preserves alignment while adding color codes
+	result := buf.String()
+	result = color.ApplyColors(result)
+
+	return result, nil
 }
 
 type SortableResourceNames []corev1.ResourceName
