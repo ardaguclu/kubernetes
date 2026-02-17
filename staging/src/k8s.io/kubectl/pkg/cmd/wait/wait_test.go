@@ -1758,7 +1758,7 @@ func TestConditionFuncFor(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := conditionFuncFor(test.condition, io.Discard)
+			_, err := conditionFuncsFor(test.condition, io.Discard)
 			switch {
 			case err == nil && test.expectedErr != None:
 				t.Fatalf("expected error %q, got nil", test.expectedErr)
@@ -1892,12 +1892,12 @@ func TestWaitForMultipleConditions(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			fakeClient := test.fakeClient()
-			conditionFuncs, err := conditionFuncFor([]string{"condition=Ready", "condition=Available"}, io.Discard)
+			conditionFuncs, err := conditionFuncsFor([]string{"condition=Ready", "condition=Available"}, io.Discard)
 			require.NoError(t, err)
 
 			// For the mixed condition test, use different condition functions
 			if strings.Contains(test.name, "mixed condition") {
-				conditionFuncs, err = conditionFuncFor([]string{"condition=Ready", "jsonpath={.status.phase}=Running"}, io.Discard)
+				conditionFuncs, err = conditionFuncsFor([]string{"condition=Ready", "jsonpath={.status.phase}=Running"}, io.Discard)
 				require.NoError(t, err)
 			}
 

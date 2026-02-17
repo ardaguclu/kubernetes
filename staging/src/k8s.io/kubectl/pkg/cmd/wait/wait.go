@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"slices"
 	"strings"
 	"time"
 
@@ -166,7 +167,7 @@ func (flags *WaitFlags) ToOptions(args []string) (*WaitOptions, error) {
 	if err != nil {
 		return nil, err
 	}
-	conditionFn, err := conditionFuncFor(flags.ForCondition, flags.ErrOut)
+	conditionFn, err := conditionFuncsFor(flags.ForCondition, flags.ErrOut)
 	if err != nil {
 		return nil, err
 	}
@@ -190,7 +191,7 @@ func (flags *WaitFlags) ToOptions(args []string) (*WaitOptions, error) {
 	return o, nil
 }
 
-func conditionFuncFor(conditions []string, errOut io.Writer) ([]ConditionFunc, error) {
+func conditionFuncsFor(conditions []string, errOut io.Writer) ([]ConditionFunc, error) {
 	var condFuncs []ConditionFunc
 	for _, cond := range conditions {
 		lowercaseCond := strings.ToLower(cond)
@@ -235,6 +236,10 @@ func conditionFuncFor(conditions []string, errOut io.Writer) ([]ConditionFunc, e
 			return nil, fmt.Errorf("unrecognized condition: %q", cond)
 		}
 	}
+	if condFuncs == nil {
+		return nil, fmt.Errorf("unrecognized condition: %q", conditions)
+	}
+
 	return condFuncs, nil
 }
 
@@ -330,7 +335,7 @@ func (o *WaitOptions) RunWait() error {
 func (o *WaitOptions) RunWaitContext(ctx context.Context) error {
 	ctx, cancel := watchtools.ContextWithOptionalTimeout(ctx, o.Timeout)
 	defer cancel()
-	if conditionExists("create", o.ForCondition) {
+	if containsCondition(o.ForCondition, "create") {
 		// TODO(soltysh): this is not ideal solution, because we're polling every .5s,
 		// and we have to use ResourceFinder, which contains the resource name.
 		// In the long run, we should expose resource information from ResourceFinder,
@@ -378,7 +383,7 @@ func (o *WaitOptions) RunWaitContext(ctx context.Context) error {
 		return nil
 	}
 	visitor := o.ResourceFinder.Do()
-	isForDelete := conditionExists("delete", o.ForCondition)
+	isForDelete := containsCondition(o.ForCondition, "delete")
 	if visitor, ok := visitor.(*resource.Result); ok && isForDelete {
 		visitor.IgnoreErrors(apierrors.IsNotFound)
 	}
@@ -393,11 +398,8 @@ func (o *WaitOptions) RunWaitContext(ctx context.Context) error {
 	return err
 }
 
-func conditionExists(c string, conditions []string) bool {
-	for _, cond := range conditions {
-		if strings.ToLower(cond) == c {
-			return true
-		}
-	}
-	return false
+func containsCondition(conditions []string, condition string) bool {
+	return slices.ContainsFunc(conditions, func(cond string) bool {
+		return strings.ToLower(cond) == condition
+	})
 }
