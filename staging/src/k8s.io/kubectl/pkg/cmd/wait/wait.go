@@ -80,7 +80,15 @@ var (
 
 		# Wait for the pod "busybox1" to be deleted, with a timeout of 60s, after having issued the "delete" command
 		kubectl delete pod/busybox1
-		kubectl wait --for=delete pod/busybox1 --timeout=60s`))
+		kubectl wait --for=delete pod/busybox1 --timeout=60s
+
+		# Wait for pod "busybox1" to be created AND reach the "Ready" status condition
+		kubectl wait --for=condition=Ready --for=create pod/busybox1
+
+		# Wait for pod "busybox1" to reach the "Ready" status OR for its containers to report a "False" readiness state
+		until kubectl wait pod/busybox1 --for=condition=Ready --timeout=1s 2>/dev/null || \
+		kubectl wait pod/busybox1 --for=condition=ContainersReady=False --timeout=1s 2>/dev/null; \
+		do echo "Checking conditions..."; sleep 1; done`))
 )
 
 // errNoMatchingResources is returned when there is no resources matching a query.
